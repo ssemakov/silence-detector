@@ -1,0 +1,85 @@
+name: Manual detector run
+
+on:
+  workflow_dispatch:
+    inputs:
+      detector_input:
+        description: >-
+          Path (relative to the repository) or URL to a media file that should be
+          analysed when triggering the workflow manually.
+        required: true
+
+jobs:
+  run-detector:
+    name: Manual detector run
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.detector_input != ''
+    env:
+      GO_VERSION: "1.22.x"
+      DETECTOR_INPUT_RAW: ${{ github.event.inputs.detector_input }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+
+      - name: Build CLI
+        run: |
+          set -o pipefail
+          mkdir -p bin
+          go build -o bin/silence-detector ./cmd/silence-detector 2>&1 | tee manual-build-log.txt
+
+      - name: Resolve detector input
+        id: resolve_input
+        run: |
+          set -euo pipefail
+          input="$DETECTOR_INPUT_RAW"
+          if [[ "$input" =~ ^https?:// ]]; then
+            curl -L "$input" -o detector-input.bin
+            echo "path=detector-input.bin" >> "$GITHUB_OUTPUT"
+          elif [[ -f "$input" ]]; then
+            echo "path=$input" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unable to locate detector input: $input" >&2
+            exit 1
+          fi
+
+      - name: Record detector input path
+        run: echo "DETECTOR_INPUT=${{ steps.resolve_input.outputs.path }}" >> "$GITHUB_ENV"
+
+      - name: Run silence detector
+        run: |
+          set -euo pipefail
+          declare -a cmd=("./bin/silence-detector" "--input" "$DETECTOR_INPUT" "--output" "json" "--check-full-silence")
+
+          echo "Command: ${cmd[*]}" | tee detector-run.log
+
+          "${cmd[@]}" 1>detector-output.json 2>detector-run.err
+          cat detector-output.json | tee -a detector-run.log
+          if [[ -s detector-run.err ]]; then
+            {
+              echo "--- stderr ---"
+              cat detector-run.err
+            } | tee -a detector-run.log
+          fi
+          echo "DETECTOR_OUTPUT=detector-output.json" >> "$GITHUB_ENV"
+
+      - name: Upload detector artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detector-run
+          path: |
+            manual-build-log.txt
+            detector-run.log
+            detector-output.json
+            detector-run.err
+        if-no-files-found: ignore
