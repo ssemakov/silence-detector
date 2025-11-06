@@ -139,6 +139,7 @@ func parseSilenceOutput(output string) ([]SilenceInterval, float64, error) {
 	var intervals []SilenceInterval
 	var currentStart *float64
 	var lastProgress float64
+	var maxEnd float64
 
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -177,6 +178,10 @@ func parseSilenceOutput(output string) ([]SilenceInterval, float64, error) {
 				Duration: duration,
 			})
 
+			if end > maxEnd {
+				maxEnd = end
+			}
+
 			currentStart = nil
 			continue
 		}
@@ -207,6 +212,10 @@ func parseSilenceOutput(output string) ([]SilenceInterval, float64, error) {
 			End:      end,
 			Duration: end - start,
 		})
+	}
+
+	if maxEnd > lastProgress {
+		lastProgress = maxEnd
 	}
 
 	return intervals, lastProgress, nil

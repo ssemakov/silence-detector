@@ -155,6 +155,30 @@ frame=   50 fps=0.0 q=-0.0 size=       0kB time=00:00:05.00 bitrate=   0.0kbits/
 	assertFloatEqual(t, interval.Duration, 5)
 }
 
+func TestParseSilenceOutputKeepsLongestTimestampAsDuration(t *testing.T) {
+	output := `
+[silencedetect @ 0x123] silence_start: 0.000000
+[silencedetect @ 0x123] silence_end: 20.735000 | silence_duration: 20.735000
+frame=  400 fps=0.0 q=-0.0 size=       0kB time=00:00:20.73 bitrate=   0.0kbits/s speed=1x
+`
+
+	intervals, duration, err := parseSilenceOutput(output)
+	if err != nil {
+		t.Fatalf("parseSilenceOutput returned error: %v", err)
+	}
+
+	if len(intervals) != 1 {
+		t.Fatalf("expected 1 interval, got %d", len(intervals))
+	}
+
+	assertFloatEqual(t, duration, 20.735)
+
+	interval := intervals[0]
+	assertFloatEqual(t, interval.Start, 0)
+	assertFloatEqual(t, interval.End, 20.735)
+	assertFloatEqual(t, interval.Duration, 20.735)
+}
+
 func TestDetectionResultFullySilent(t *testing.T) {
 	result := DetectionResult{
 		InputDuration: 6,
