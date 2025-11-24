@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ssemakov/silence-detector/pkg/detector"
+	"github.com/wistia/silence-detector/pkg/detector"
 )
 
 type outputFormat string

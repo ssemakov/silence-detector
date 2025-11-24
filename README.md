@@ -1,11 +1,11 @@
 # silence-detector
 
-A Go library and CLI tool for detecting silence in audio streams.
+A Go library and CLI tool for detecting silence in audio streams, maintained at https://github.com/wistia/silence-detector.
 
 ## Installation
 
 ```bash
-go get github.com/ssemakov/silence-detector
+go get github.com/wistia/silence-detector
 ```
 
 ## Building
