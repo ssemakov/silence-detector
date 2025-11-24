@@ -1,3 +1,3 @@
-module github.com/ssemakov/silence-detector
+module github.com/wistia/silence-detector
 
 go 1.24.9
